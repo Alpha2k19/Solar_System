@@ -54,6 +54,16 @@
       linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
     background-size: 22px 22px;
   }
+  /* Mobile: inspector becomes a slide-up bottom sheet */
+  @media (max-width: 1023px){
+    #inspector{
+      transform: translateY(130%);
+      transition: transform .34s cubic-bezier(.4,0,.2,1);
+    }
+    #inspector.open{ transform: translateY(0); }
+    #sheetGrip{ display: block; }
+  }
+  #sheetGrip{ display: none; }
 </style>
 </head>
 <body class="vignette grain antialiased">
@@ -96,6 +106,11 @@
         <div class="tick-label" data-i18n="target">Target</div>
         <div id="hudTarget" class="text-[13px] text-[#ffe8b3]">Free View</div>
       </div>
+      <div class="w-px h-8 bg-white/[.11]"></div>
+      <div class="text-center">
+        <div class="tick-label" data-i18n="solarWind">Solar wind</div>
+        <div id="hudWind" class="text-[13px] text-[#bfe3ff]">—</div>
+      </div>
     </div>
 
     <!-- Right quick controls -->
@@ -106,9 +121,67 @@
       <button id="btnCinematic" data-i18n="cinematic" class="px-3 py-[7px] rounded-full border border-white/12 text-[#cdd8f0] hover:text-white transition">Cinematic</button>
       <div class="w-px h-5 bg-white/10 mx-1"></div>
       <button id="btnLang" class="px-3 py-[7px] rounded-full border border-amber-300/40 text-[#f7d08b] bg-amber-300/10 hover:bg-amber-300/20 transition font-medium tracking-wide">FR</button>
+      <button id="btnSettings" title="Settings" class="ml-1 px-3 py-[7px] rounded-full border border-white/12 text-[#cdd8f0] hover:text-white transition">⚙</button>
     </div>
   </div>
 </header>
+
+<!-- Mobile language + settings (always visible on small screens) -->
+<button id="btnLangMobile" class="md:hidden fixed top-[26px] right-4 z-50 pointer-events-auto glass rounded-full px-[14px] py-[8px] soft-shadow border border-amber-300/40 text-[#f7d08b] text-[12px] font-medium tracking-wide">FR</button>
+<button id="btnSettingsMobile" class="md:hidden fixed top-[26px] right-[74px] z-50 pointer-events-auto glass rounded-full w-[40px] h-[36px] soft-shadow border border-white/12 text-[#cdd8f0] text-[15px] flex items-center justify-center">⚙</button>
+
+<!-- Settings popover -->
+<div id="settingsPanel" class="hidden fixed z-[55] right-3 top-[74px] w-[min(300px,calc(100vw-1.5rem))] glass-strong rounded-[20px] soft-shadow p-4 pointer-events-auto text-[12px] text-[#dbe3f4]">
+  <div class="flex items-center justify-between mb-3">
+    <div class="display text-[16px]" data-i18n="settings">Settings</div>
+    <button id="settingsClose" class="w-7 h-7 rounded-full bg-white/[.06] border border-white/12 text-[#cdd8f0] text-[12px]">✕</button>
+  </div>
+
+  <div class="mb-4">
+    <div class="tick-label mb-2"><span data-i18n="quality">Quality</span> · <span id="fpsReadout" class="mono text-[#bac6df] normal-case tracking-normal">– fps</span></div>
+    <div class="flex gap-1">
+      <button data-q="auto"   data-i18n="qAuto" class="q-btn flex-1 toggle-pill px-2 py-[7px] rounded-full border border-white/12 text-[#b9c3d8]">Auto</button>
+      <button data-q="high"   data-i18n="qHigh" class="q-btn flex-1 toggle-pill px-2 py-[7px] rounded-full border border-white/12 text-[#b9c3d8]">High</button>
+      <button data-q="medium" data-i18n="qMed"  class="q-btn flex-1 toggle-pill px-2 py-[7px] rounded-full border border-white/12 text-[#b9c3d8]">Med</button>
+      <button data-q="low"    data-i18n="qLow"  class="q-btn flex-1 toggle-pill px-2 py-[7px] rounded-full border border-white/12 text-[#b9c3d8]">Low</button>
+    </div>
+  </div>
+
+  <div class="mb-4">
+    <div class="flex items-center justify-between mb-1">
+      <div class="tick-label" data-i18n="distScale">Distance scale</div>
+      <div id="scaleReadout" class="mono text-[11px] text-[#bac6df]">1.00×</div>
+    </div>
+    <input id="scaleSlider" type="range" min="50" max="160" value="100" class="w-full">
+  </div>
+
+  <div class="flex items-center justify-between mb-3">
+    <span data-i18n="realistic">Realistic orbits</span>
+    <button id="btnRealistic" class="toggle-pill px-3 py-[6px] rounded-full border border-white/12 text-[#b9c3d8] min-w-[64px]">Off</button>
+  </div>
+
+  <div class="flex items-center justify-between mb-3">
+    <span data-i18n="livePositions">Live positions</span>
+    <button id="btnLive" class="toggle-pill px-3 py-[6px] rounded-full border border-white/12 text-[#b9c3d8] min-w-[64px]">Off</button>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <span data-i18n="pilotToggleLabel">Pilot mode</span>
+    <button id="btnPilotToggle" data-i18n="pilot" class="toggle-pill px-3 py-[6px] rounded-full border border-white/12 text-[#b9c3d8] min-w-[64px]">Pilot</button>
+  </div>
+</div>
+
+<!-- Touch flight controls (mobile pilot mode) -->
+<div id="touchControls" class="hidden">
+  <div id="joyBase" class="fixed left-5 bottom-[120px] z-[46] w-[120px] h-[120px] rounded-full glass border border-white/15 touch-none pointer-events-auto">
+    <div id="joyKnob" class="absolute w-[52px] h-[52px] rounded-full bg-amber-300/30 border border-amber-300/60" style="left:34px;top:34px;"></div>
+  </div>
+  <div class="fixed right-5 bottom-[120px] z-[46] flex flex-col gap-3 pointer-events-auto">
+    <button id="btnFlyUp" class="w-[54px] h-[54px] rounded-full glass border border-white/15 text-[#e7ecf8] text-[18px] touch-none">▲</button>
+    <button id="btnFlyDown" class="w-[54px] h-[54px] rounded-full glass border border-white/15 text-[#e7ecf8] text-[18px] touch-none">▼</button>
+  </div>
+  <button id="btnFlyExit" data-i18n="exitWord" class="fixed left-1/2 -translate-x-1/2 bottom-[54px] z-[46] px-5 py-2 rounded-full glass border border-white/15 text-[#e7ecf8] pointer-events-auto">Exit</button>
+</div>
 
 <!-- Left Planets Rail -->
 <aside class="fixed left-0 top-0 bottom-0 z-30 w-[326px] hidden xl:flex flex-col pointer-events-none">
@@ -140,9 +213,11 @@
   </div>
 </div>
 
-<!-- Right Inspector -->
-<aside id="inspector" class="fixed right-6 top-[108px] z-30 w-[345px] hidden lg:block pointer-events-auto transition-all duration-300">
-  <div class="glass-strong rounded-[26px] soft-shadow overflow-hidden">
+<!-- Right Inspector / mobile bottom-sheet -->
+<aside id="inspector" class="fixed z-[45] pointer-events-auto inset-x-2 bottom-2 max-h-[62vh] overflow-y-auto scroll-hide lg:inset-x-auto lg:right-6 lg:top-[108px] lg:bottom-auto lg:w-[345px] lg:max-h-none lg:overflow-visible">
+  <div class="glass-strong rounded-[26px] soft-shadow overflow-hidden relative">
+    <div id="sheetGrip" class="pt-2 pb-1 flex items-center justify-center"><span class="w-10 h-[5px] rounded-full bg-white/20"></span></div>
+    <button id="inspClose" class="lg:hidden absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/[.06] border border-white/15 flex items-center justify-center text-[#cdd8f0] text-[13px]">✕</button>
     <div class="px-[22px] pt-[20px] pb-[14px]">
       <div class="flex items-start justify-between gap-4">
         <div>
@@ -184,6 +259,7 @@
         <span class="label-badge">G-TYPE</span>
         <span class="label-badge">ANCHOR</span>
       </div>
+      <div id="inspLive" class="hidden mt-3 pt-3 border-t border-white/[.07] text-[12px] text-[#bfe3ff] leading-relaxed"></div>
     </div>
 
     <div class="border-t border-white/[.08] px-[22px] py-[14px] flex items-center justify-between">
@@ -193,7 +269,7 @@
   </div>
 
   <!-- System telemetry mini -->
-  <div class="mt-3 glass rounded-[20px] px-[18px] py-[14px] soft-shadow">
+  <div class="mt-3 glass rounded-[20px] px-[18px] py-[14px] soft-shadow hidden lg:block">
     <div class="flex items-center justify-between mb-2">
       <div class="tick-label" data-i18n="localRadar">LOCAL RADAR</div>
       <div class="text-[10px] text-[#7f8ca8] mono">J2000 • ecliptic</div>
@@ -205,6 +281,11 @@
     </div>
   </div>
 </aside>
+
+<!-- Mobile: reopen inspector sheet -->
+<button id="btnInspToggle" class="lg:hidden fixed right-3 top-[150px] z-[44] pointer-events-auto glass rounded-full w-11 h-11 soft-shadow border border-white/12 flex items-center justify-center text-amber-300">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.6" r="0.6" fill="currentColor"/></svg>
+</button>
 
 <!-- Bottom control console -->
 <div class="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
@@ -286,9 +367,10 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 const canvas = document.getElementById('canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+const isMobile = window.matchMedia('(max-width: 820px)').matches || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.06;
@@ -309,7 +391,7 @@ controls.autoRotateSpeed = 0.25;
 
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.84, 0.82, 0.14);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), isMobile ? 0.55 : 0.84, 0.82, 0.14);
 composer.addPass(bloomPass);
 
 // Lights
@@ -347,9 +429,9 @@ function makeStarField(count, radiusMin, radiusMax, sizeMin, sizeMax){
   });
   return new THREE.Points(geo, mat);
 }
-const distantStars = makeStarField(11000, 520, 2050, 0.32, 1.5);
+const distantStars = makeStarField(isMobile ? 4500 : 11000, 520, 2050, 0.32, 1.5);
 scene.add(distantStars);
-const nearStars = makeStarField(1700, 180, 520, 0.48, 1.7);
+const nearStars = makeStarField(isMobile ? 700 : 1700, 180, 520, 0.48, 1.7);
 scene.add(nearStars);
 
 // milky way dome
@@ -497,6 +579,9 @@ const I18N = {
     latchCamera:'Latch Camera', unlatch:'Unlatch',
     orbital:'Orbital', pilotMode2:'Pilot', freeView:'Free View',
     dayPrefix:'Day', dayShort:'d', fromSol:'from Sol',
+    moonLabel:'Moon', settings:'Settings', quality:'Quality', qAuto:'Auto', qHigh:'High', qMed:'Medium', qLow:'Low',
+    distScale:'Distance scale', realistic:'Realistic orbits', pilotToggleLabel:'Pilot mode', exitWord:'Exit', onWord:'On', offWord:'Off',
+    livePositions:'Live positions', solarWind:'Solar wind', spaceWeatherLive:'space weather · live (NOAA)',
     sunSub:'G2V yellow dwarf • System anchor', moonWord:'moon', moonWordPlural:'moons',
     sunDesc:"The Sun holds 99.86% of the Solar System's mass. Its photosphere churns with plasma granules, solar flares, and magnetic storms visible as dynamic coronal emission in this real-time orrery.",
     sunName:'Sol', langBtn:'FR'
@@ -517,6 +602,9 @@ const I18N = {
     latchCamera:'Verrouiller caméra', unlatch:'Déverrouiller',
     orbital:'Orbitale', pilotMode2:'Pilote', freeView:'Vue libre',
     dayPrefix:'Jour', dayShort:'j', fromSol:'du Soleil',
+    moonLabel:'Lune', settings:'Réglages', quality:'Qualité', qAuto:'Auto', qHigh:'Élevée', qMed:'Moyenne', qLow:'Basse',
+    distScale:'Échelle des distances', realistic:'Orbites réalistes', pilotToggleLabel:'Mode pilote', exitWord:'Quitter', onWord:'Activé', offWord:'Désactivé',
+    livePositions:'Positions réelles', solarWind:'Vent solaire', spaceWeatherLive:'météo spatiale · live (NOAA)',
     sunSub:'Naine jaune G2V • Ancre du système', moonWord:'lune', moonWordPlural:'lunes',
     sunDesc:"Le Soleil renferme 99,86 % de la masse du système solaire. Sa photosphère bouillonne de granules de plasma, d'éruptions solaires et de tempêtes magnétiques visibles comme une émission coronale dynamique dans cet orrery en temps réel.",
     sunName:'Sol', langBtn:'EN'
@@ -553,6 +641,101 @@ function drawPlanetLabel(def){
   lctx.fillStyle = 'rgba(205,216,239,0.78)';
   lctx.fillText(def.dist + ' • ' + def.period,210,62);
   if(def._labelTexture) def._labelTexture.needsUpdate = true;
+}
+
+function drawMoonLabel(def){
+  const c = def._moonLabelCanvas;
+  if(!c) return;
+  const x = c.getContext('2d');
+  x.clearRect(0,0,256,64);
+  x.font = '600 26px "Instrument Sans", system-ui, sans-serif';
+  x.fillStyle = '#dfe7f5';
+  x.textAlign = 'center';
+  x.fillText(t('moonLabel').toUpperCase(),128,40);
+  if(def._moonLabelTexture) def._moonLabelTexture.needsUpdate = true;
+}
+
+/* ---------- Orbital elements (real values) for optional realistic mode ---------- */
+const ORBITAL = {
+  mercury:{ e:0.2056, i:7.00, node:48.3 },
+  venus:  { e:0.0068, i:3.39, node:76.7 },
+  earth:  { e:0.0167, i:0.00, node:-11.3 },
+  mars:   { e:0.0934, i:1.85, node:49.6 },
+  jupiter:{ e:0.0489, i:1.30, node:100.5 },
+  saturn: { e:0.0565, i:2.49, node:113.7 },
+  uranus: { e:0.0463, i:0.77, node:74.0 },
+  neptune:{ e:0.0095, i:1.77, node:131.8 }
+};
+const DEG = Math.PI/180;
+planetDefs.forEach(d=>{
+  const o = ORBITAL[d.id] || { e:0, i:0, node:0 };
+  d.ecc = o.e;
+  d.inc = o.i * DEG * 2.4;   // modest visual exaggeration so inclinations read on screen
+  d.node = o.node * DEG;
+});
+
+/* ---------- JPL approximate orbital elements (J2000) for live ephemeris ---------- */
+// el = [a, e, I, meanLongitude L, longPeri, longNode] (deg), rt = per-century rates
+const KEPLER = {
+  mercury:{ el:[0.38709927,0.20563593,7.00497902,252.25032350,77.45779628,48.33076593], rt:[0.00000037,0.00001906,-0.00594749,149472.67411175,0.16047689,-0.12534081] },
+  venus:  { el:[0.72333566,0.00677672,3.39467605,181.97909950,131.60246718,76.67984255], rt:[0.00000390,-0.00004107,-0.00078890,58517.81538729,0.00268329,-0.27769418] },
+  earth:  { el:[1.00000261,0.01671123,-0.00001531,100.46457166,102.93768193,0.0], rt:[0.00000562,-0.00004392,-0.01294668,35999.37244981,0.32327364,0.0] },
+  mars:   { el:[1.52371034,0.09339410,1.84969142,-4.55343205,-23.94362959,49.55953891], rt:[0.00001847,0.00007882,-0.00813131,19140.30268499,0.44441088,-0.29257343] },
+  jupiter:{ el:[5.20288700,0.04838624,1.30439695,34.39644051,14.72847983,100.47390909], rt:[-0.00011607,-0.00013253,-0.00183714,3034.74612775,0.21252668,0.20469106] },
+  saturn: { el:[9.53667594,0.05386179,2.48599187,49.95424423,92.59887831,113.66242448], rt:[-0.00125060,-0.00050991,0.00193609,1222.49362201,-0.41897216,-0.28867794] },
+  uranus: { el:[19.18916464,0.04725744,0.77263783,313.23810451,170.95427630,74.01692503], rt:[-0.00196176,-0.00004397,-0.00242939,428.48202785,0.40805281,0.04240589] },
+  neptune:{ el:[30.06992276,0.00859048,1.77004347,-55.12002969,44.96476227,131.78422574], rt:[0.00026291,0.00005105,0.00035372,218.45945325,-0.32241464,-0.00508664] }
+};
+planetDefs.forEach(d=>{ d._kep = KEPLER[d.id] || null; });
+const baseJD = Date.now()/86400000 + 2440587.5;   // Julian date at page load
+const D2R = Math.PI/180;
+let liveMode = false;
+let SW = { kp:null, wind:null };   // live NOAA space-weather readings
+
+// Heliocentric ecliptic true longitude (rad) for a body at Julian date JD
+function eclipticLongitude(kep, JD){
+  if(!kep) return 0;
+  const T = (JD - 2451545.0)/36525;
+  const e = kep.el[1] + kep.rt[1]*T;
+  const L = kep.el[3] + kep.rt[3]*T;
+  const peri = kep.el[4] + kep.rt[4]*T;
+  let M = ((L - peri) % 360 + 540) % 360 - 180;   // -> [-180,180]
+  M *= D2R;
+  let E = M + e*Math.sin(M);
+  for(let i=0;i<6;i++){ E = E - (E - e*Math.sin(E) - M)/(1 - e*Math.cos(E)); }
+  const nu = 2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2), Math.sqrt(1-e)*Math.cos(E/2));
+  return nu + peri*D2R;
+}
+
+let realisticOrbits = false;
+let distanceScale = 1;
+
+// Position of a body at true anomaly nu, honouring current mode + distance scale
+function bodyPositionAt(p, nu, out){
+  out = out || new THREE.Vector3();
+  const a = p.a;
+  if(!realisticOrbits){
+    out.set(Math.cos(nu)*a, 0, Math.sin(nu)*a);
+    return out;
+  }
+  const e = p.def.ecc || 0, inc = p.def.inc || 0, node = p.def.node || 0;
+  const r = a * (1 - e*e) / (1 + e*Math.cos(nu));
+  const xp = Math.cos(nu)*r, zp = Math.sin(nu)*r;
+  const Y = zp * Math.sin(inc);
+  const Z1 = zp * Math.cos(inc);
+  const X1 = xp;
+  out.set(
+    X1*Math.cos(node) - Z1*Math.sin(node),
+    Y,
+    X1*Math.sin(node) + Z1*Math.cos(node)
+  );
+  return out;
+}
+function rebuildOrbit(p){
+  const pts = []; const seg = 256;
+  for(let i=0;i<=seg;i++){ pts.push(bodyPositionAt(p, (i/seg)*Math.PI*2)); }
+  p.orbitLine.geometry.dispose();
+  p.orbitLine.geometry = new THREE.BufferGeometry().setFromPoints(pts);
 }
 
 const planets = [];
@@ -669,6 +852,16 @@ planetDefs.forEach((def, idx)=>{
     moonPivot.add(moonMesh);
     def._moonPivot = moonPivot;
     def._moonMesh = moonMesh;
+    // moon label
+    const mlc = document.createElement('canvas'); mlc.width = 256; mlc.height = 64;
+    const mlt = new THREE.CanvasTexture(mlc); mlt.colorSpace = THREE.SRGBColorSpace;
+    def._moonLabelCanvas = mlc; def._moonLabelTexture = mlt;
+    drawMoonLabel(def);
+    const mlabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: mlt, transparent:true, opacity:0.92, depthTest:false }));
+    mlabel.scale.set(1.6, 0.4, 1);
+    mlabel.position.set(0, 0.5, 0);
+    moonMesh.add(mlabel);
+    def._moonLabel = mlabel;
   }
 
   // initial angle random so they aren't all lined up
@@ -678,13 +871,14 @@ planetDefs.forEach((def, idx)=>{
   planets.push({
     def, mesh, group, orbitLine,
     angle,
+    a: def.orbit,
     orbitSpeed: def.speed,
     rotSpeed: def.rot
   });
 });
 
 // Asteroid belt - between Mars & Jupiter
-const asteroidCount = 2100;
+const asteroidCount = isMobile ? 800 : 2100;
 const asteroidInstGeo = new THREE.IcosahedronGeometry(1, 0);
 const asteroidMat = new THREE.MeshStandardMaterial({ color: 0x8d7f73, roughness:.92, metalness:.026 });
 const asteroidInst = new THREE.InstancedMesh(asteroidInstGeo, asteroidMat, asteroidCount);
@@ -722,6 +916,19 @@ for(let i=0;i<kuiperCount;i++){
 kuiperGeo.setAttribute('position', new THREE.BufferAttribute(kuiperPos,3));
 const kuiperPoints = new THREE.Points(kuiperGeo, new THREE.PointsMaterial({ size:0.65, color:0x9ab9ff, transparent:true, opacity:.44, sizeAttenuation:true }));
 scene.add(kuiperPoints);
+
+// Distance scale + realistic-orbit appliers (rebuild orbit geometry / scale belts)
+function applyDistanceScale(s){
+  distanceScale = s;
+  planets.forEach(p=>{ p.a = p.def.orbit * s; rebuildOrbit(p); });
+  asteroidInst.scale.setScalar(s);
+  kuiperPoints.scale.setScalar(s);
+  controls.maxDistance = 440 * Math.max(1, s);
+}
+function applyRealistic(on){
+  realisticOrbits = on;
+  planets.forEach(p=> rebuildOrbit(p));
+}
 
 // Meteors / shooting stars system
 const meteorPool = [];
@@ -803,12 +1010,13 @@ renderer.domElement.addEventListener('mousemove', (e)=>{
   }
 });
 renderer.domElement.addEventListener('click', (e)=>{
+  if(flyMode) return;
   const hits = getIntersections(e.clientX, e.clientY);
   if(hits[0]){
     const obj = hits[0].object;
-    if(obj === sunMesh){ selectBody('sun'); return; }
+    if(obj === sunMesh){ selectBody('sun'); openInspectorSheet(); return; }
     const found = planets.find(p=>p.mesh===obj || p.mesh.children.includes(obj));
-    if(found) selectBody(found.def.id);
+    if(found){ selectBody(found.def.id); openInspectorSheet(); }
   }
 });
 
@@ -894,6 +1102,19 @@ function selectBody(id, fly=true){
     s.textContent=tg;
     tagWrap.appendChild(s);
   });
+  // live space-weather block (Sun only)
+  const liveEl = document.getElementById('inspLive');
+  if(liveEl){
+    if(isSun && (SW.kp != null || SW.wind != null)){
+      const parts = [];
+      if(SW.wind != null) parts.push(`${t('solarWind')} ${Math.round(SW.wind)} km/s`);
+      if(SW.kp != null) parts.push(`Kp ${SW.kp.toFixed(1)}`);
+      liveEl.textContent = `☀ ${parts.join(' · ')} — ${t('spaceWeatherLive')}`;
+      liveEl.classList.remove('hidden');
+    } else {
+      liveEl.classList.add('hidden');
+    }
+  }
   const sw = document.getElementById('inspSwatch');
   sw.style.background = `radial-gradient(circle at 35% 35%, #ffffffcc, ${swAccent || swColor} 52%, ${swColor} 100%)`;
   sw.style.boxShadow = `0 0 26px ${swAccent || swColor}55`;
@@ -947,8 +1168,16 @@ function pExtraLift(id){
 // planet button clicks
 document.addEventListener('click', e=>{
   const btn = e.target.closest('[data-planet]');
-  if(btn){ selectBody(btn.dataset.planet); }
+  if(btn){ selectBody(btn.dataset.planet); openInspectorSheet(); }
 });
+
+// Mobile inspector sheet controls
+const mqMobile = window.matchMedia('(max-width: 1023px)');
+const inspectorEl = document.getElementById('inspector');
+function openInspectorSheet(){ if(mqMobile.matches) inspectorEl.classList.add('open'); }
+function closeInspectorSheet(){ inspectorEl.classList.remove('open'); }
+document.getElementById('inspClose').addEventListener('click', closeInspectorSheet);
+document.getElementById('btnInspToggle').addEventListener('click', ()=> inspectorEl.classList.toggle('open'));
 
 // toggles
 let showOrbits = true, showLabels = true, showAsteroids = true, showMeteors = true;
@@ -959,7 +1188,7 @@ document.querySelectorAll('.scene-toggle').forEach(b=>{
     const on = b.classList.contains('on');
     if(!on) b.classList.add('text-[#b9c3d8]'); else b.classList.remove('text-[#b9c3d8]');
     if(k==='orbits'){ showOrbits = on; orbitLines.visible = on; }
-    if(k==='labels'){ showLabels = on; planets.forEach(p=>{ if(p.def._label) p.def._label.visible = on; }); }
+    if(k==='labels'){ showLabels = on; planets.forEach(p=>{ if(p.def._label) p.def._label.visible = on; if(p.def._moonLabel) p.def._moonLabel.visible = on; }); }
     if(k==='asteroids'){ showAsteroids = on; asteroidInst.visible = on; kuiperPoints.visible = on; }
     if(k==='meteors'){ showMeteors = on; }
     if(k==='aurora'){ nebulaGroup.visible = on; }
@@ -1014,9 +1243,13 @@ function enterFlyMode(){
   document.getElementById('btnFlyMode').classList.add('on');
   document.getElementById('btnFlyMode').classList.remove('text-[#b9c3d8]');
   document.getElementById('btnOrbitMode').classList.remove('on');
-  document.getElementById('pilotOverlay').classList.remove('hidden');
+  document.getElementById('pilotOverlay').classList.toggle('hidden', mqMobile.matches); // hint is desktop-only
   controls.enabled = false;
   document.getElementById('camModeLabel').textContent = t('pilotMode2');
+  const pt = document.getElementById('btnPilotToggle');
+  if(pt) pt.classList.add('on');
+  // show on-screen joystick on touch devices
+  if(mqMobile.matches) document.getElementById('touchControls').classList.remove('hidden');
 }
 function exitFlyMode(){
   flyMode = false;
@@ -1026,6 +1259,10 @@ function exitFlyMode(){
   document.getElementById('pilotOverlay').classList.add('hidden');
   controls.enabled = true;
   document.getElementById('camModeLabel').textContent = t('orbital');
+  const pt = document.getElementById('btnPilotToggle');
+  if(pt) pt.classList.remove('on');
+  document.getElementById('touchControls').classList.add('hidden');
+  joyVec.x = 0; joyVec.y = 0; flyUpHeld = false; flyDownHeld = false;
 }
 document.getElementById('btnFlyMode').addEventListener('click', toggleFlyMode);
 document.getElementById('btnOrbitMode').addEventListener('click', exitFlyMode);
@@ -1047,6 +1284,13 @@ function handleFly(delta){
   if(flyKeys['f']) camera.position.y -= speed;
   if(flyKeys['q']) camera.rotateZ(0.018);
   if(flyKeys['e']) camera.rotateZ(-0.018);
+  // touch joystick: up on the pad = forward, sideways = strafe
+  if(joyVec.x || joyVec.y){
+    camera.position.addScaledVector(forward, -joyVec.y * speed * 1.3);
+    camera.position.addScaledVector(right, joyVec.x * speed * 1.3);
+  }
+  if(flyUpHeld) camera.position.y += speed;
+  if(flyDownHeld) camera.position.y -= speed;
 }
 let isPointerLocked = false;
 renderer.domElement.addEventListener('click', ()=>{
@@ -1117,6 +1361,46 @@ function drawRadar(){
   });
 }
 
+/* ---------- Quality control (manual + auto-FPS) ---------- */
+let fpsAccum = 0, fpsFrames = 0;
+const fpsReadoutEl = document.getElementById('fpsReadout');
+let qualityMode = 'auto';
+let effectiveQuality = '';
+const QUALITY_ORDER = ['low','medium','high'];
+function setEffectiveQuality(level){
+  if(effectiveQuality === level) return;
+  effectiveQuality = level;
+  const dpr = window.devicePixelRatio || 1;
+  if(level === 'high'){
+    renderer.setPixelRatio(Math.min(dpr, 2));
+    bloomPass.enabled = true; bloomPass.strength = isMobile ? 0.55 : 0.84;
+    nearStars.visible = true;
+  } else if(level === 'medium'){
+    renderer.setPixelRatio(Math.min(dpr, 1.4));
+    bloomPass.enabled = true; bloomPass.strength = 0.42;
+    nearStars.visible = true;
+  } else {
+    renderer.setPixelRatio(1);
+    bloomPass.enabled = false;
+    nearStars.visible = false;
+  }
+  composer.setSize(window.innerWidth, window.innerHeight);
+}
+function autoQuality(fps){
+  let idx = QUALITY_ORDER.indexOf(effectiveQuality);
+  if(idx < 0) idx = 2;
+  if(fps < 30 && idx > 0) setEffectiveQuality(QUALITY_ORDER[idx-1]);
+  else if(fps > 54 && idx < 2) setEffectiveQuality(QUALITY_ORDER[idx+1]);
+}
+function setQualityMode(mode){
+  qualityMode = mode;
+  document.querySelectorAll('.q-btn').forEach(b=> b.classList.toggle('on', b.dataset.q === mode));
+  setEffectiveQuality(mode === 'auto' ? (isMobile ? 'medium' : 'high') : mode);
+}
+document.querySelectorAll('.q-btn').forEach(b=>{
+  b.addEventListener('click', ()=> setQualityMode(b.dataset.q));
+});
+
 // animate
 let simDays = 0;
 let clock = new THREE.Clock();
@@ -1125,8 +1409,23 @@ function animate(){
   const rawDelta = clock.getDelta();
   const delta = paused ? 0 : rawDelta * timeWarp;
 
+  // FPS sampling (drives Auto quality + readout)
+  fpsAccum += rawDelta; fpsFrames++;
+  if(fpsAccum >= 1.0){
+    const fps = fpsFrames / fpsAccum;
+    fpsFrames = 0; fpsAccum = 0;
+    if(fpsReadoutEl) fpsReadoutEl.textContent = Math.round(fps) + ' fps';
+    if(qualityMode === 'auto') autoQuality(fps);
+  }
+
   simDays += delta * 1.84;
-  document.getElementById('simClock').textContent = `${t('dayPrefix')} ${simDays.toFixed(1)}`;
+  if(liveMode){
+    const liveDate = new Date((baseJD + simDays - 2440587.5) * 86400000);
+    document.getElementById('simClock').textContent =
+      liveDate.toLocaleDateString(currentLang==='fr' ? 'fr-FR' : 'en-US', { year:'numeric', month:'short', day:'numeric' });
+  } else {
+    document.getElementById('simClock').textContent = `${t('dayPrefix')} ${simDays.toFixed(1)}`;
+  }
   document.getElementById('daysCounter').textContent = simDays.toFixed(1) + t('dayShort');
 
   // rotate sun
@@ -1137,10 +1436,14 @@ function animate(){
 
   // planets
   planets.forEach(p=>{
-    p.angle += p.orbitSpeed * delta * 0.9;
-    const x = Math.cos(p.angle) * p.def.orbit;
-    const z = Math.sin(p.angle) * p.def.orbit;
-    p.mesh.position.set(x, 0, z);
+    if(liveMode){
+      const lon = eclipticLongitude(p.def._kep, baseJD + simDays);
+      p.angle = lon;
+      p.mesh.position.set(Math.cos(lon)*p.a, 0, Math.sin(lon)*p.a);
+    } else {
+      p.angle += p.orbitSpeed * delta * 0.9;
+      bodyPositionAt(p, p.angle, p.mesh.position);
+    }
     p.mesh.rotation.y += p.rotSpeed * delta * 2.4;
     if(p.def._cloudMesh) p.def._cloudMesh.rotation.y += delta * 0.012;
     if(p.def._moonPivot) p.def._moonPivot.rotation.y += delta * 1.6;
@@ -1259,24 +1562,176 @@ function applyLanguage(lang){
 
   // language button shows the language you can switch to
   document.getElementById('btnLang').textContent = t('langBtn');
+  const btnLangM = document.getElementById('btnLangMobile');
+  if(btnLangM) btnLangM.textContent = t('langBtn');
 
   // dynamic pieces
   renderPlanetList();
-  planetDefs.forEach(drawPlanetLabel);
+  planetDefs.forEach(d=>{ drawPlanetLabel(d); if(d._moonLabel) drawMoonLabel(d); });
   selectBody(selectedId, false);                 // refresh inspector + HUD, no camera move
 
   // camera mode + follow button reflect current state
   document.getElementById('camModeLabel').textContent = flyMode ? t('pilotMode2') : t('orbital');
   document.getElementById('inspFollowBtn').textContent =
     (followTarget === selectedId && followTarget !== null) ? t('unlatch') : t('latchCamera');
+  const rb = document.getElementById('btnRealistic');
+  if(rb) rb.textContent = realisticOrbits ? t('onWord') : t('offWord');
+  const lb = document.getElementById('btnLive');
+  if(lb) lb.textContent = liveMode ? t('onWord') : t('offWord');
 }
 
 document.getElementById('btnLang').addEventListener('click', ()=>{
   applyLanguage(currentLang === 'fr' ? 'en' : 'fr');
 });
+const btnLangMobileEl = document.getElementById('btnLangMobile');
+if(btnLangMobileEl) btnLangMobileEl.addEventListener('click', ()=>{
+  applyLanguage(currentLang === 'fr' ? 'en' : 'fr');
+});
 
 // apply saved / default language on load
 applyLanguage(currentLang);
+
+/* ---------- Settings popover ---------- */
+const settingsPanel = document.getElementById('settingsPanel');
+function toggleSettings(){ settingsPanel.classList.toggle('hidden'); }
+document.getElementById('btnSettings').addEventListener('click', toggleSettings);
+const btnSettingsMobile = document.getElementById('btnSettingsMobile');
+if(btnSettingsMobile) btnSettingsMobile.addEventListener('click', toggleSettings);
+document.getElementById('settingsClose').addEventListener('click', ()=> settingsPanel.classList.add('hidden'));
+
+/* ---------- Distance scale ---------- */
+const scaleSlider = document.getElementById('scaleSlider');
+const scaleReadout = document.getElementById('scaleReadout');
+scaleSlider.addEventListener('input', ()=>{
+  const s = parseInt(scaleSlider.value, 10) / 100;
+  applyDistanceScale(s);
+  scaleReadout.textContent = s.toFixed(2) + '×';
+});
+
+/* ---------- Realistic orbits ---------- */
+const btnRealistic = document.getElementById('btnRealistic');
+btnRealistic.addEventListener('click', ()=>{
+  applyRealistic(!realisticOrbits);
+  btnRealistic.classList.toggle('on', realisticOrbits);
+  btnRealistic.textContent = realisticOrbits ? t('onWord') : t('offWord');
+});
+
+/* ---------- Live positions (real ephemeris for today) ---------- */
+const btnLive = document.getElementById('btnLive');
+btnLive.addEventListener('click', ()=>{
+  liveMode = !liveMode;
+  btnLive.classList.toggle('on', liveMode);
+  btnLive.textContent = liveMode ? t('onWord') : t('offWord');
+});
+
+/* ---------- Live space weather (NOAA SWPC real-time JSON) ---------- */
+function parseLatestCol(data, re){
+  if(!Array.isArray(data) || data.length < 2) return null;
+  const ci = data[0].findIndex(h => re.test(String(h)));
+  if(ci < 0) return null;
+  for(let i = data.length - 1; i > 0; i--){
+    const v = parseFloat(data[i][ci]);
+    if(!isNaN(v)) return v;
+  }
+  return null;
+}
+function updateSpaceWeatherUI(){
+  const hw = document.getElementById('hudWind');
+  if(hw){
+    const bits = [];
+    if(SW.wind != null) bits.push(Math.round(SW.wind) + ' km/s');
+    if(SW.kp != null) bits.push('Kp ' + SW.kp.toFixed(1));
+    hw.textContent = bits.length ? bits.join(' · ') : '—';
+  }
+  if(selectedId === 'sun') selectBody('sun', false);
+}
+async function fetchSpaceWeather(){
+  try{
+    const ctrl = new AbortController();
+    const to = setTimeout(()=> ctrl.abort(), 8000);
+    const [kpR, windR] = await Promise.allSettled([
+      fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json', { signal: ctrl.signal }),
+      fetch('https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json', { signal: ctrl.signal })
+    ]);
+    clearTimeout(to);
+    if(kpR.status === 'fulfilled' && kpR.value.ok){
+      SW.kp = parseLatestCol(await kpR.value.json(), /kp/i);
+    }
+    if(windR.status === 'fulfilled' && windR.value.ok){
+      SW.wind = parseLatestCol(await windR.value.json(), /speed/i);
+    }
+    updateSpaceWeatherUI();
+  }catch(e){ /* offline / blocked: keep placeholders */ }
+}
+fetchSpaceWeather();
+setInterval(fetchSpaceWeather, 15 * 60 * 1000);
+
+/* ---------- Pilot mode toggle (entry point that also works on mobile) ---------- */
+document.getElementById('btnPilotToggle').addEventListener('click', toggleFlyMode);
+
+/* ---------- Touch flight controls (mobile pilot mode) ---------- */
+let joyVec = { x:0, y:0 };
+let flyUpHeld = false, flyDownHeld = false;
+const joyBase = document.getElementById('joyBase');
+const joyKnob = document.getElementById('joyKnob');
+let joyActive = false;
+function updateJoy(e){
+  const r = joyBase.getBoundingClientRect();
+  const max = r.width/2 - 8;
+  let dx = e.clientX - (r.left + r.width/2);
+  let dy = e.clientY - (r.top + r.height/2);
+  const len = Math.hypot(dx, dy) || 1;
+  if(len > max){ dx = dx/len*max; dy = dy/len*max; }
+  joyKnob.style.left = (r.width/2 - 26 + dx) + 'px';
+  joyKnob.style.top  = (r.height/2 - 26 + dy) + 'px';
+  joyVec.x = dx / max; joyVec.y = dy / max;
+}
+function resetJoy(){
+  joyActive = false; joyVec.x = 0; joyVec.y = 0;
+  joyKnob.style.left = '34px'; joyKnob.style.top = '34px';
+}
+joyBase.addEventListener('pointerdown', e=>{ joyActive = true; joyBase.setPointerCapture(e.pointerId); updateJoy(e); e.preventDefault(); });
+joyBase.addEventListener('pointermove', e=>{ if(joyActive) updateJoy(e); });
+joyBase.addEventListener('pointerup', resetJoy);
+joyBase.addEventListener('pointercancel', resetJoy);
+
+function holdBtn(id, setter){
+  const el = document.getElementById(id);
+  el.addEventListener('pointerdown', e=>{ setter(true); e.preventDefault(); });
+  el.addEventListener('pointerup', ()=> setter(false));
+  el.addEventListener('pointerleave', ()=> setter(false));
+  el.addEventListener('pointercancel', ()=> setter(false));
+}
+holdBtn('btnFlyUp', v=> flyUpHeld = v);
+holdBtn('btnFlyDown', v=> flyDownHeld = v);
+document.getElementById('btnFlyExit').addEventListener('click', exitFlyMode);
+
+// touch look: drag on the scene while piloting to rotate the view
+let lookId = null, lookLastX = 0, lookLastY = 0;
+renderer.domElement.addEventListener('touchstart', e=>{
+  if(!flyMode) return;
+  const tch = e.changedTouches[0];
+  lookId = tch.identifier; lookLastX = tch.clientX; lookLastY = tch.clientY;
+}, { passive:true });
+renderer.domElement.addEventListener('touchmove', e=>{
+  if(!flyMode || lookId === null) return;
+  for(const tch of e.changedTouches){
+    if(tch.identifier === lookId){
+      const mx = tch.clientX - lookLastX, my = tch.clientY - lookLastY;
+      lookLastX = tch.clientX; lookLastY = tch.clientY;
+      camera.rotation.order = 'YXZ';
+      camera.rotation.y -= mx * 0.004;
+      camera.rotation.x -= my * 0.004;
+      camera.rotation.x = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, camera.rotation.x));
+    }
+  }
+}, { passive:true });
+renderer.domElement.addEventListener('touchend', e=>{
+  for(const tch of e.changedTouches){ if(tch.identifier === lookId) lookId = null; }
+});
+
+// initialise quality (highlights Auto + sets a sensible starting level)
+setQualityMode('auto');
 
 // initial select
 selectBody('earth');
